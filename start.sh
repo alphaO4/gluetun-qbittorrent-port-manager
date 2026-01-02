@@ -38,14 +38,20 @@ update_port () {
 
 # Main loop to check the port and update if necessary
 while true; do
-  # Fetch the forwarded port
-  PORT_FORWARDED=$(curl -s ${HTTP_S}://${GLUETUN_HOST}:${GLUETUN_PORT}/v1/openvpn/portforwarded | awk -F: '{gsub(/[^0-9]/,"",$2); print $2}')
+  # Follow redirects from gluetun's API (it returns 301 without trailing slash)
+  RESPONSE=$(curl -fsSL "${HTTP_S}://${GLUETUN_HOST}:${GLUETUN_PORT}/v1/openvpn/portforwarded" || true)
 
-  echo "Recieved: ${PORT_FORWARDED}"
-  
+  # Try to extract the port from JSON first, then fall back to the first integer
+  PORT_FORWARDED=$(echo "$RESPONSE" | jq -r '.port // .data.port // .forwarded_port // .portforwarded // empty')
+  if [[ -z "$PORT_FORWARDED" ]]; then
+    PORT_FORWARDED=$(echo "$RESPONSE" | grep -Eo '[0-9]{2,6}' | head -n1)
+  fi
+
+  echo "Received: ${PORT_FORWARDED:-<empty>}"
+
   # Check if the fetched port is valid
   if [[ -z "$PORT_FORWARDED" || ! "$PORT_FORWARDED" =~ ^[0-9]+$ ]]; then
-    echo "Failed to retrieve a valid port number."
+    echo "Failed to retrieve a valid port number. Response: $RESPONSE"
     sleep 10
     continue
   fi
