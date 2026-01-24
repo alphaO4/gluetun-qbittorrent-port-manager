@@ -39,7 +39,7 @@ update_port () {
 # Main loop to check the port and update if necessary
 while true; do
   # Follow redirects from gluetun's API (it returns 301 without trailing slash)
-  RESPONSE=$(curl -fsSL "${HTTP_S}://${GLUETUN_HOST}:${GLUETUN_PORT}/v1/openvpn/portforwarded" || true)
+  RESPONSE=$(curl -fsSL "${HTTP_S}://${GLUETUN_HOST}:${GLUETUN_PORT}/v1/portforward" || true)
 
   # Try to extract the port from JSON first, then fall back to the first integer
   PORT_FORWARDED=$(echo "$RESPONSE" | jq -r '.port // .data.port // .forwarded_port // .portforwarded // empty')
